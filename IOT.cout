@@ -1,0 +1,84 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+// ==== DHT11 Config ====
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// ==== LCD Config ====
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Address 0x27, 16x2 display
+
+// ==== Motor Driver Pins ====
+const int IN1 = 8;
+const int IN2 = 9;
+const int ENA = 10;
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+
+  // Motor setup
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENA, OUTPUT);
+
+  // Motor forward direction
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+
+  // LCD setup
+  lcd.begin(16, 2);
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Fan Control Init");
+  delay(2000);
+}
+
+void loop() {
+  float temperature = dht.readTemperature();
+
+  if (isnan(temperature)) {
+    Serial.println("DHT Error");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Sensor Error");
+    delay(2000);
+    return;
+  }
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" C");
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print(" C");
+
+  int speed = 0;
+  String fanStatus;
+
+  if (temperature < 25) {
+    speed = 0;
+    fanStatus = "Fan: OFF";
+  } else if (temperature < 30) {
+    speed = 20;
+    fanStatus = "Fan: LOW";
+  } else if (temperature < 35) {
+    speed = 60;
+    fanStatus = "Fan: MID";
+  } else {
+    speed = 255;
+    fanStatus = "Fan: HIGH";
+  }
+
+  analogWrite(ENA, speed);
+
+  lcd.setCursor(0, 1);
+  lcd.print(fanStatus);
+
+  delay(2000);
+}
